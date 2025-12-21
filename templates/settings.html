@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - WAFGuard{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block page_subtitle %}Configure WAF protection settings{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <div class="settings-grid">
+        <!-- Security Level -->
+        <div class="settings-card">
+            <div class="card-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Security Level
+                </h3>
+            </div>
+
+            <div class="settings-content">
+                <div class="security-levels">
+                    <div class="level-option {% if config.security_level == 'low' %}active{% endif %}"
+                        onclick="setSecurityLevel('low')">
+                        <input type="radio" name="security_level" value="low" {% if config.security_level=='low'
+                            %}checked{% endif %}>
+                        <label>
+                            <span class="level-name">🟢 Low</span>
+                            <span class="level-desc">Basic protection, minimal false positives</span>
+                        </label>
+                    </div>
+
+                    <div class="level-option {% if config.security_level == 'medium' %}active{% endif %}"
+                        onclick="setSecurityLevel('medium')">
+                        <input type="radio" name="security_level" value="medium" {% if config.security_level=='medium'
+                            %}checked{% endif %}>
+                        <label>
+                            <span class="level-name">🟡 Medium</span>
+                            <span class="level-desc">Balanced protection (Recommended)</span>
+                        </label>
+                    </div>
+
+                    <div class="level-option {% if config.security_level == 'high' %}active{% endif %}"
+                        onclick="setSecurityLevel('high')">
+                        <input type="radio" name="security_level" value="high" {% if config.security_level=='high'
+                            %}checked{% endif %}>
+                        <label>
+                            <span class="level-name">🟠 High</span>
+                            <span class="level-desc">Strict protection, some false positives</span>
+                        </label>
+                    </div>
+
+                    <div class="level-option {% if config.security_level == 'paranoid' %}active{% endif %}"
+                        onclick="setSecurityLevel('paranoid')">
+                        <input type="radio" name="security_level" value="paranoid" {% if
+                            config.security_level=='paranoid' %}checked{% endif %}>
+                        <label>
+                            <span class="level-name">🔴 Paranoid</span>
+                            <span class="level-desc">Maximum security, may block legitimate requests</span>
+                        </label>
+                    </div>
+                </div>
+
+                <p class="settings-note">Current level: <strong id="current-level">{{ config.security_level|upper
+                        }}</strong></p>
+            </div>
+        </div>
+
+        <!-- Rate Limiting - EDITABLE -->
+        <div class="settings-card">
+            <div class="card-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    Rate Limiting
+                </h3>
+            </div>
+
+            <div class="settings-content">
+                <div class="input-setting">
+                    <label>Max Requests per Window</label>
+                    <input type="number" id="rate-max-requests" value="{{ config.rate_limit_requests }}" min="1"
+                        max="10000">
+                    <span class="input-hint">Number of requests allowed before rate limiting (default: 100)</span>
+                </div>
+
+                <div class="input-setting">
+                    <label>Time Window (seconds)</label>
+                    <input type="number" id="rate-window" value="{{ config.rate_limit_window }}" min="1" max="3600">
+                    <span class="input-hint">Time window for counting requests (default: 60)</span>
+                </div>
+
+                <div class="input-setting">
+                    <label>Ban Duration (seconds)</label>
+                    <input type="number" id="rate-ban-duration" value="{{ config.rate_limit_ban_duration }}" min="1"
+                        max="86400">
+                    <span class="input-hint">How long to ban rate-limited IPs (default: 300)</span>
+                </div>
+
+                <button class="btn-primary" onclick="updateRateLimit()" style="margin-top: 16px; width: 100%;">
+                    <svg viewBox="0 0 24 24" fill="none" style="width: 16px; height: 16px; margin-right: 8px;">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        <polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
+                        <polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                    Save Rate Limit Settings
+                </button>
+            </div>
+        </div>
+
+        <!-- About WAFGuard -->
+        <div class="settings-card about-card">
+            <div class="card-header">
+                <h3>
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                        <line x1="12" y1="16" x2="12" y2="12" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" />
+                    </svg>
+                    About WAFGuard
+                </h3>
+            </div>
+
+            <div class="about-content">
+                <div class="about-logo">
+                    <div class="logo-large">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <polyline points="9 12 11 14 15 10" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </div>
+                    <h2>WAFGuard</h2>
+                    <span class="version-badge">v1.0.0</span>
+                </div>
+
+                <div class="about-info">
+                    <div class="about-row">
+                        <span class="about-label">Version</span>
+                        <span class="about-value">1.0.0</span>
+                    </div>
+                    <div class="about-row">
+                        <span class="about-label">Framework</span>
+                        <span class="about-value">Python Flask + SocketIO</span>
+                    </div>
+                    <div class="about-row">
+                        <span class="about-label">Developer</span>
+                        <span class="about-value">WAFGuard Team</span>
+                    </div>
+                </div>
+
+                <div class="protection-types">
+                    <h4>Protection Types</h4>
+                    <div class="protection-grid">
+                        <div class="protection-item">
+                            <span class="protection-icon">🛢️</span>
+                            <span>SQL Injection</span>
+                        </div>
+                        <div class="protection-item">
+                            <span class="protection-icon">📜</span>
+                            <span>XSS Attacks</span>
+                        </div>
+                        <div class="protection-item">
+                            <span class="protection-icon">📁</span>
+                            <span>Path Traversal</span>
+                        </div>
+                        <div class="protection-item">
+                            <span class="protection-icon">💻</span>
+                            <span>Command Injection</span>
+                        </div>
+                        <div class="protection-item">
+                            <span class="protection-icon">⚡</span>
+                            <span>Rate Limiting</span>
+                        </div>
+                        <div class="protection-item">
+                            <span class="protection-icon">🌐</span>
+                            <span>IP Filtering</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .about-card {
+        grid-column: 1 / -1;
+    }
+
+    .about-content {
+        text-align: center;
+    }
+
+    .about-logo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 24px;
+    }
+
+    .logo-large {
+        width: 80px;
+        height: 80px;
+        background: var(--accent-gradient);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+    }
+
+    .logo-large svg {
+        width: 48px;
+        height: 48px;
+        color: white;
+    }
+
+    .about-logo h2 {
+        font-size: 28px;
+        font-weight: 700;
+        background: var(--accent-gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .version-badge {
+        padding: 6px 14px;
+        background: rgba(0, 212, 255, 0.1);
+        color: var(--accent-primary);
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .about-info {
+        max-width: 400px;
+        margin: 0 auto 24px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .protection-types h4 {
+        margin-bottom: 16px;
+        color: var(--text-secondary);
+    }
+
+    .protection-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .protection-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px;
+        background: var(--bg-tertiary);
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .protection-icon {
+        font-size: 24px;
+    }
+
+    .btn-primary {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .protection-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}

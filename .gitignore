@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Local data files (keep templates)
+data/attack_logs.json
+data/blocked_ips.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+
+# Flask
+instance/
+.webassets-cache
+
+# Environment files
+.env
+.env.local
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/

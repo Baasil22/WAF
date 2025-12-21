@@ -1,0 +1,790 @@
+{% extends "base.html" %}
+
+{% block title %}Attack Logs - WAFGuard{% endblock %}
+{% block page_title %}Attack Logs{% endblock %}
+{% block page_subtitle %}View and analyze blocked requests{% endblock %}
+
+{% block content %}
+<div class="logs-container">
+    <!-- Filters -->
+    <div class="logs-filters">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>Attack Type</label>
+                <select id="filterType" onchange="filterLogs()">
+                    <option value="">All Types</option>
+                    <option value="SQL Injection">SQL Injection</option>
+                    <option value="XSS">XSS</option>
+                    <option value="Path Traversal">Path Traversal</option>
+                    <option value="Command Injection">Command Injection</option>
+                    <option value="Rate Limit">Rate Limit</option>
+                    <option value="IP Blacklisted">IP Blocked</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Severity</label>
+                <select id="filterSeverity" onchange="filterLogs()">
+                    <option value="">All Severities</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Search IP</label>
+                <input type="text" id="filterIP" placeholder="Search IP..." oninput="filterLogs()">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn-secondary" onclick="clearFilters()">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                Clear Filters
+            </button>
+            <button class="btn-secondary" onclick="exportLogs()">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V15" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <polyline points="7,10 12,15 17,10" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                Export Logs
+            </button>
+            <button class="btn-danger" onclick="clearAllLogs()">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <polyline points="3,6 5,6 21,6" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M19 6V20C19 21.1046 18.1046 22 17 22H7C5.89543 22 5 21.1046 5 20V6" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Logs Table Container -->
+    <div class="logs-table-wrapper">
+        <table class="logs-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>IP Address</th>
+                    <th>Attack Type</th>
+                    <th>Severity</th>
+                    <th>Path</th>
+                    <th>Matched</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="logsTableBody">
+                {% for log in logs %}
+                <tr class="log-row" data-type="{{ log.attack_type }}" data-severity="{{ log.severity }}"
+                    data-ip="{{ log.ip }}">
+                    <td data-label="Time">
+                        <span class="log-time">{{ log.timestamp[:19].replace('T', ' ') }}</span>
+                    </td>
+                    <td data-label="IP">
+                        <span class="log-ip">{{ log.ip }}</span>
+                    </td>
+                    <td data-label="Type">
+                        <span class="attack-badge {{ log.attack_type.lower().replace(' ', '-') }}">
+                            {{ log.attack_type }}
+                        </span>
+                    </td>
+                    <td data-label="Severity">
+                        <span class="severity-badge {{ log.severity }}">
+                            {{ log.severity|capitalize }}
+                        </span>
+                    </td>
+                    <td data-label="Path">
+                        <span class="log-path" title="{{ log.path }}">{{ log.path[:25] }}{% if log.path|length > 25
+                            %}...{% endif %}</span>
+                    </td>
+                    <td data-label="Matched">
+                        <span class="log-pattern" title="{{ log.matched }}">{{ log.matched[:30] if log.matched else '-'
+                            }}{% if log.matched and log.matched|length > 30 %}...{% endif %}</span>
+                    </td>
+                    <td data-label="Actions">
+                        <div class="log-actions">
+                            <button class="btn-icon" title="Block IP" onclick="blockIP('{{ log.ip }}')">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="currentColor"
+                                        stroke-width="2" />
+                                </svg>
+                            </button>
+                            <button class="btn-icon success" title="Whitelist IP" onclick="whitelistIP('{{ log.ip }}')">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor"
+                                        stroke-width="2" />
+                                    <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="no-logs">
+                        <div class="no-logs-content">
+                            <svg viewBox="0 0 24 24" fill="none" style="width:48px;height:48px;color:var(--success);">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor"
+                                    stroke-width="2" />
+                                <polyline points="9,12 11,14 15,10" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                            <h3>No attacks detected</h3>
+                            <p>Your application is secure. All clear!</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="logs-pagination">
+        <span class="pagination-info">Showing <strong id="visibleCount">{{ logs|length }}</strong> of <strong>{{
+                logs|length }}</strong> logs</span>
+    </div>
+</div>
+
+<!-- Custom Modal Popup -->
+<div id="confirmModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-icon" id="modalIcon">
+            <svg viewBox="0 0 24 24" fill="none">
+                <path
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </div>
+        <h3 id="modalTitle">Confirm Action</h3>
+        <p id="modalMessage">Are you sure you want to proceed?</p>
+        <div class="modal-buttons">
+            <button class="btn-secondary" onclick="closeConfirmModal()">Cancel</button>
+            <button class="btn-danger" id="modalConfirmBtn" onclick="executeConfirmedAction()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .logs-container {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .logs-filters {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+    }
+
+    .filter-group select,
+    .filter-group input {
+        width: 100%;
+        padding: 10px 14px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 14px;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-actions button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .filter-actions button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Responsive Table */
+    .logs-table-wrapper {
+        background: var(--bg-secondary);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .logs-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    .logs-table thead {
+        background: var(--bg-tertiary);
+    }
+
+    .logs-table th {
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        white-space: nowrap;
+    }
+
+    .logs-table td {
+        padding: 14px 16px;
+        border-top: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .log-row:hover {
+        background: rgba(0, 212, 255, 0.03);
+    }
+
+    .log-time {
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+
+    .log-ip {
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-weight: 500;
+    }
+
+    .log-path,
+    .log-pattern {
+        font-family: 'SF Mono', 'Consolas', monospace;
+        font-size: 12px;
+        color: var(--text-secondary);
+        word-break: break-all;
+    }
+
+    .attack-badge,
+    .severity-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .attack-badge.sql-injection {
+        background: rgba(139, 92, 246, 0.1);
+        color: #8B5CF6;
+    }
+
+    .attack-badge.xss {
+        background: rgba(236, 72, 153, 0.1);
+        color: #EC4899;
+    }
+
+    .attack-badge.path-traversal {
+        background: rgba(245, 158, 11, 0.1);
+        color: #F59E0B;
+    }
+
+    .attack-badge.command-injection {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+
+    .attack-badge.rate-limit {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3B82F6;
+    }
+
+    .attack-badge.ip-blacklisted {
+        background: rgba(107, 114, 128, 0.1);
+        color: #6B7280;
+    }
+
+    .severity-badge.critical {
+        background: rgba(220, 38, 38, 0.15);
+        color: #DC2626;
+    }
+
+    .severity-badge.high {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+    }
+
+    .severity-badge.medium {
+        background: rgba(245, 158, 11, 0.1);
+        color: #F59E0B;
+    }
+
+    .severity-badge.low {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22C55E;
+    }
+
+    .log-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-icon svg {
+        width: 16px;
+        height: 16px;
+        color: var(--text-secondary);
+    }
+
+    .btn-icon:hover {
+        background: rgba(255, 71, 87, 0.1);
+        border-color: var(--danger);
+    }
+
+    .btn-icon:hover svg {
+        color: var(--danger);
+    }
+
+    .btn-icon.success:hover {
+        background: rgba(0, 200, 83, 0.1);
+        border-color: var(--success);
+    }
+
+    .btn-icon.success:hover svg {
+        color: var(--success);
+    }
+
+    .no-logs {
+        text-align: center;
+        padding: 60px !important;
+    }
+
+    .no-logs-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .no-logs-content h3 {
+        margin: 0;
+        color: var(--success);
+    }
+
+    .no-logs-content p {
+        margin: 0;
+        color: var(--text-muted);
+    }
+
+    .logs-pagination {
+        display: flex;
+        justify-content: center;
+        padding: 10px;
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .pagination-info {
+        color: var(--text-muted);
+        font-size: 14px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .logs-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .logs-table {
+            min-width: 800px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .filter-row {
+            flex-direction: column;
+        }
+
+        .filter-group {
+            min-width: 100%;
+        }
+
+        /* Card-based layout for mobile */
+        .logs-table-wrapper {
+            overflow: visible;
+        }
+
+        .logs-table {
+            min-width: unset;
+        }
+
+        .logs-table thead {
+            display: none;
+        }
+
+        .logs-table tbody tr {
+            display: block;
+            margin-bottom: 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .logs-table tbody td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logs-table tbody td:last-child {
+            border-bottom: none;
+            justify-content: center;
+            padding-top: 12px;
+        }
+
+        .logs-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .log-actions {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* Custom Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal-container {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        padding: 32px;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        animation: slideUp 0.3s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-icon {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        background: rgba(255, 71, 87, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-icon svg {
+        width: 32px;
+        height: 32px;
+        color: var(--danger);
+    }
+
+    .modal-icon.success {
+        background: rgba(0, 200, 83, 0.1);
+    }
+
+    .modal-icon.success svg {
+        color: var(--success);
+    }
+
+    .modal-container h3 {
+        margin: 0 0 12px;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .modal-container p {
+        margin: 0 0 24px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .modal-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .modal-buttons button {
+        min-width: 120px;
+        padding: 12px 24px;
+        font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterLogs() {
+        const typeFilter = document.getElementById('filterType').value.toLowerCase();
+        const severityFilter = document.getElementById('filterSeverity').value.toLowerCase();
+        const ipFilter = document.getElementById('filterIP').value.toLowerCase();
+
+        let visibleCount = 0;
+
+        document.querySelectorAll('.log-row').forEach(row => {
+            const type = row.dataset.type.toLowerCase();
+            const severity = row.dataset.severity.toLowerCase();
+            const ip = row.dataset.ip.toLowerCase();
+
+            const matchType = !typeFilter || type.includes(typeFilter);
+            const matchSeverity = !severityFilter || severity === severityFilter;
+            const matchIP = !ipFilter || ip.includes(ipFilter);
+
+            const visible = matchType && matchSeverity && matchIP;
+            row.style.display = visible ? '' : 'none';
+            if (visible) visibleCount++;
+        });
+
+        document.getElementById('visibleCount').textContent = visibleCount;
+    }
+
+    function clearFilters() {
+        document.getElementById('filterType').value = '';
+        document.getElementById('filterSeverity').value = '';
+        document.getElementById('filterIP').value = '';
+        filterLogs();
+    }
+
+    function exportLogs() {
+        // Create a temporary link to download the CSV file
+        const link = document.createElement('a');
+        link.href = '/api/logs/export';
+        link.download = 'waf_attack_logs.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showNotification('Downloading CSV file...', 'success');
+    }
+
+    // Modal state
+    let pendingAction = null;
+
+    function showConfirmModal(title, message, action) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMessage').textContent = message;
+        pendingAction = action;
+        document.getElementById('confirmModal').classList.add('show');
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').classList.remove('show');
+        pendingAction = null;
+    }
+
+    function executeConfirmedAction() {
+        if (pendingAction) {
+            pendingAction();
+        }
+        closeConfirmModal();
+    }
+
+    function clearAllLogs() {
+        showConfirmModal(
+            'Clear All Logs',
+            'Are you sure you want to clear all attack logs? This action cannot be undone.',
+            function () {
+                fetch('/api/logs/clear', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Server returned ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Clear logs response:', data);
+                        showNotification('All logs cleared successfully!', 'success');
+                        setTimeout(() => location.reload(), 500);
+                    })
+                    .catch(err => {
+                        console.error('Clear logs error:', err);
+                        showNotification('Failed to clear logs: ' + err.message, 'error');
+                    });
+            }
+        );
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeConfirmModal();
+        }
+    });
+
+    // Close modal on overlay click
+    document.getElementById('confirmModal').addEventListener('click', function (e) {
+        if (e.target === this) {
+            closeConfirmModal();
+        }
+    });
+
+    function blockIP(ip) {
+        console.log('Blocking IP:', ip);
+        fetch('/api/ip/blacklist', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: ip })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Block IP response:', data);
+                showNotification(`IP ${ip} has been blocked`, 'success');
+            })
+            .catch(err => {
+                console.error('Block IP error:', err);
+                showNotification('Failed to block IP: ' + err, 'error');
+            });
+    }
+
+    function whitelistIP(ip) {
+        console.log('Whitelisting IP:', ip);
+        fetch('/api/ip/whitelist', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: ip })
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Whitelist IP response:', data);
+                showNotification(`IP ${ip} has been whitelisted`, 'success');
+            })
+            .catch(err => {
+                console.error('Whitelist IP error:', err);
+                showNotification('Failed to whitelist IP: ' + err, 'error');
+            });
+    }
+
+    function showNotification(message, type = 'success') {
+        const existing = document.querySelector('.notification');
+        if (existing) existing.remove();
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" style="width: 20px; height: 20px;">
+                ${type === 'success'
+                ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="2"/><polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2"/>'
+                : '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>'
+            }
+            </svg>
+            <span>${message}</span>
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.animation = 'slideIn 0.3s ease reverse';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}
