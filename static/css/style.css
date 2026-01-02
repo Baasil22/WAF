@@ -1990,3 +1990,361 @@ body {
         min-height: -webkit-fill-available;
     }
 }
+
+/* ============================================
+   Toast Notifications - Compact Style
+   ============================================ */
+
+.notification {
+    position: fixed !important;
+    top: 24px !important;
+    right: 24px !important;
+    left: auto !important;
+    bottom: auto !important;
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 14px 20px !important;
+    border-radius: 12px !important;
+    background: #12121a !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 212, 255, 0.1) !important;
+    backdrop-filter: blur(20px) !important;
+    z-index: 10000 !important;
+    animation: notificationSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    max-width: 350px !important;
+    min-width: 200px !important;
+    width: fit-content !important;
+    height: auto !important;
+    max-height: 80px !important;
+    overflow: hidden !important;
+}
+
+.notification.hiding {
+    animation: notificationSlideOut 0.3s ease forwards !important;
+}
+
+.notification::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 12px 0 0 12px;
+}
+
+/* Notification Icon */
+.notification svg {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Notification Message */
+.notification span {
+    color: #ffffff !important;
+    line-height: 1.4 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Success Notification */
+.notification.success::before {
+    background: linear-gradient(180deg, #00c853, #00e676);
+    box-shadow: 0 0 15px rgba(0, 200, 83, 0.4);
+}
+
+.notification.success svg {
+    color: #00c853 !important;
+}
+
+/* Error Notification */
+.notification.error::before {
+    background: linear-gradient(180deg, #ff4757, #ff6b7a);
+    box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+}
+
+.notification.error svg {
+    color: #ff4757 !important;
+}
+
+/* Warning Notification */
+.notification.warning::before {
+    background: linear-gradient(180deg, #ffc107, #ffd54f);
+    box-shadow: 0 0 15px rgba(255, 193, 7, 0.4);
+}
+
+.notification.warning svg {
+    color: #ffc107 !important;
+}
+
+/* Info Notification */
+.notification.info::before {
+    background: linear-gradient(180deg, #00d4ff, #40e0ff);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+}
+
+.notification.info svg {
+    color: #00d4ff !important;
+}
+
+/* Animations */
+@keyframes notificationSlideIn {
+    0% {
+        transform: translateX(120%) scale(0.8);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes notificationSlideOut {
+    0% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateX(120%) scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* Progress bar for notification auto-dismiss */
+.notification::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-radius: 0 0 16px 16px;
+    animation: shrink 4s linear forwards;
+}
+
+.notification.success::after {
+    background: linear-gradient(90deg, #00c853, #00e676);
+}
+
+.notification.error::after {
+    background: linear-gradient(90deg, #ff4757, #ff6b7a);
+}
+
+.notification.warning::after {
+    background: linear-gradient(90deg, #ffc107, #ffd54f);
+}
+
+.notification.info::after {
+    background: linear-gradient(90deg, #00d4ff, #40e0ff);
+}
+
+@keyframes shrink {
+    0% {
+        width: 100%;
+    }
+
+    100% {
+        width: 0%;
+    }
+}
+
+/* Responsive notifications */
+@media (max-width: 480px) {
+    .notification {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+        min-width: auto;
+        max-width: none;
+    }
+}
+
+/* ============================================
+   Confirmation Modal
+   ============================================ */
+
+.confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.confirm-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.confirm-modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 32px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 212, 255, 0.1);
+    transform: scale(0.9) translateY(20px);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.confirm-modal-overlay.show .confirm-modal {
+    transform: scale(1) translateY(0);
+}
+
+.confirm-modal-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: iconPulse 2s ease-in-out infinite;
+}
+
+.confirm-modal-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.confirm-modal-icon.warning {
+    background: rgba(255, 193, 7, 0.15);
+    color: var(--warning);
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.2);
+}
+
+.confirm-modal-icon.danger {
+    background: rgba(255, 71, 87, 0.15);
+    color: var(--danger);
+    box-shadow: 0 0 30px rgba(255, 71, 87, 0.2);
+}
+
+.confirm-modal-icon.info {
+    background: rgba(0, 212, 255, 0.15);
+    color: var(--info);
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+}
+
+@keyframes iconPulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.confirm-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.confirm-modal-message {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 28px;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.confirm-modal-btn {
+    padding: 12px 28px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    min-width: 120px;
+}
+
+.confirm-modal-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.confirm-modal-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.confirm-modal-btn.danger {
+    background: linear-gradient(135deg, #ff4757, #ff6b7a);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+}
+
+.confirm-modal-btn.danger:hover {
+    box-shadow: 0 6px 25px rgba(255, 71, 87, 0.5);
+    transform: translateY(-2px);
+}
+
+.confirm-modal-btn.primary {
+    background: var(--accent-gradient);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+}
+
+.confirm-modal-btn.primary:hover {
+    box-shadow: 0 6px 25px rgba(0, 212, 255, 0.5);
+    transform: translateY(-2px);
+}
+
+.confirm-modal-btn.success {
+    background: linear-gradient(135deg, #00c853, #00e676);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
+}
+
+.confirm-modal-btn.success:hover {
+    box-shadow: 0 6px 25px rgba(0, 200, 83, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Responsive confirm modal */
+@media (max-width: 480px) {
+    .confirm-modal {
+        padding: 24px;
+        margin: 16px;
+    }
+
+    .confirm-modal-actions {
+        flex-direction: column;
+    }
+
+    .confirm-modal-btn {
+        width: 100%;
+    }
+}

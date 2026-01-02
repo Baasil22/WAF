@@ -219,28 +219,42 @@ function loadRecentAttacks() {
 }
 
 function clearLogs() {
-    if (confirm('Are you sure you want to clear all attack logs?')) {
-        fetch('/api/logs/clear', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                showNotification('Logs cleared successfully', 'success');
-                loadRecentAttacks();
-                setTimeout(() => location.reload(), 500);
-            })
-            .catch(err => showNotification('Failed to clear logs: ' + err, 'error'));
-    }
+    showConfirmModal({
+        title: 'Clear Attack Logs',
+        message: 'Are you sure you want to clear all attack logs? This action cannot be undone.',
+        icon: 'warning',
+        confirmText: 'Clear Logs',
+        confirmStyle: 'danger',
+        onConfirm: () => {
+            fetch('/api/logs/clear', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showNotification('Logs cleared successfully', 'success');
+                    loadRecentAttacks();
+                    setTimeout(() => location.reload(), 500);
+                })
+                .catch(err => showNotification('Failed to clear logs: ' + err, 'error'));
+        }
+    });
 }
 
 function resetStats() {
-    if (confirm('Are you sure you want to reset all statistics?')) {
-        fetch('/api/stats/reset', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                showNotification('Statistics reset successfully', 'success');
-                refreshStats();
-            })
-            .catch(err => showNotification('Failed to reset stats: ' + err, 'error'));
-    }
+    showConfirmModal({
+        title: 'Reset Statistics',
+        message: 'Are you sure you want to reset all statistics? All counters will be set to zero.',
+        icon: 'warning',
+        confirmText: 'Reset Stats',
+        confirmStyle: 'danger',
+        onConfirm: () => {
+            fetch('/api/stats/reset', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    showNotification('Statistics reset successfully', 'success');
+                    refreshStats();
+                })
+                .catch(err => showNotification('Failed to reset stats: ' + err, 'error'));
+        }
+    });
 }
 
 // ============================================
@@ -499,24 +513,123 @@ function showNotification(message, type = 'success') {
     const existing = document.querySelector('.notification');
     if (existing) existing.remove();
 
+    const icons = {
+        success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>`,
+        error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>`,
+        warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>`,
+        info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>`
+    };
+
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" style="width: 20px; height: 20px;">
-            ${type === 'success'
-            ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-            : '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'
-        }
-        </svg>
+        ${icons[type] || icons.success}
         <span>${message}</span>
     `;
 
     document.body.appendChild(notification);
 
+    // Auto dismiss after 3 seconds
     setTimeout(() => {
-        notification.style.animation = 'slideIn 0.3s ease reverse';
-        setTimeout(() => notification.remove(), 300);
+        if (notification.parentElement) {
+            notification.classList.add('hiding');
+            setTimeout(() => notification.remove(), 300);
+        }
     }, 3000);
+}
+
+// ============================================
+// Confirmation Modal
+// ============================================
+
+let confirmModalCallback = null;
+
+function showConfirmModal(options) {
+    const { title, message, icon = 'warning', confirmText = 'Confirm', confirmStyle = 'danger', onConfirm } = options;
+
+    confirmModalCallback = onConfirm;
+
+    // Remove existing confirm modal if any
+    const existing = document.getElementById('confirmModal');
+    if (existing) existing.remove();
+
+    // Icon SVGs
+    const icons = {
+        warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>`,
+        danger: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>`,
+        info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>`
+    };
+
+    const modal = document.createElement('div');
+    modal.id = 'confirmModal';
+    modal.className = 'confirm-modal-overlay';
+    modal.innerHTML = `
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon ${icon}">
+                ${icons[icon] || icons.warning}
+            </div>
+            <h3 class="confirm-modal-title">${title}</h3>
+            <p class="confirm-modal-message">${message}</p>
+            <div class="confirm-modal-actions">
+                <button class="confirm-modal-btn cancel" onclick="closeConfirmModal()">
+                    Cancel
+                </button>
+                <button class="confirm-modal-btn ${confirmStyle}" onclick="executeConfirmAction()">
+                    ${confirmText}
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Animate in
+    requestAnimationFrame(() => {
+        modal.classList.add('show');
+    });
+}
+
+function closeConfirmModal() {
+    const modal = document.getElementById('confirmModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => modal.remove(), 300);
+    }
+    confirmModalCallback = null;
+}
+
+function executeConfirmAction() {
+    if (confirmModalCallback) {
+        confirmModalCallback();
+    }
+    closeConfirmModal();
 }
 
 // ============================================
@@ -526,12 +639,16 @@ function showNotification(message, type = 'success') {
 document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
         closeModal();
+        closeConfirmModal();
     }
 });
 
 document.addEventListener('click', function (e) {
     if (e.target.classList.contains('modal-overlay')) {
         closeModal();
+    }
+    if (e.target.classList.contains('confirm-modal-overlay')) {
+        closeConfirmModal();
     }
 });
 
@@ -547,3 +664,4 @@ document.addEventListener('keypress', function (e) {
         }
     }
 });
+
